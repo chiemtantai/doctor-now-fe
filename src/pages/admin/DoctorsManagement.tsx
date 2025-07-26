@@ -4,54 +4,25 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Stethoscope,
-  User,
-  Phone,
-  Mail,
-  Calendar,
-  Star
-} from "lucide-react"
+import { FileText } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,DialogTrigger } from "@/components/ui/dialog"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Search, Plus, Edit, Trash2, Stethoscope, User, Mail, Calendar } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import parse from "html-react-parser";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 interface Doctor {
   id: number
   name: string
   email: string
-  phone: string
+  bio: string
   specialization: string
   experience: number
   status: "active" | "inactive"
-  rating: number
   avatar: string
 }
 
@@ -60,33 +31,30 @@ const mockDoctors: Doctor[] = [
     id: 1,
     name: "BS. Nguyễn Văn A",
     email: "nguyenvana@hospital.com",
-    phone: "0123456789",
+    bio: "<p>Bác sĩ chuyên khoa <strong>Tim mạch</strong> với hơn 10 năm kinh nghiệm trong điều trị cao huyết áp và suy tim.</p>",
     specialization: "Tim mạch",
     experience: 10,
     status: "active",
-    rating: 4.8,
     avatar: "👨‍⚕️"
   },
   {
     id: 2,
     name: "BS. Trần Thị B",
     email: "tranthib@hospital.com",
-    phone: "0987654321",
+    bio: "<p>Bác sĩ Nội khoa, có chuyên môn sâu về <em>rối loạn tiêu hóa</em> và bệnh lý chuyển hóa.</p>",
     specialization: "Nội khoa",
     experience: 8,
     status: "active",
-    rating: 4.9,
     avatar: "👩‍⚕️"
   },
   {
     id: 3,
     name: "BS. Lê Văn C",
     email: "levanc@hospital.com",
-    phone: "0456789123",
+    bio: "<p>Chuyên gia <strong>Ngoại khoa</strong>, từng thực hiện hơn 500 ca phẫu thuật nội soi ổ bụng thành công.</p>",
     specialization: "Ngoại khoa",
     experience: 12,
     status: "inactive",
-    rating: 4.7,
     avatar: "👨‍⚕️"
   }
 ]
@@ -100,16 +68,16 @@ export default function DoctorsManagement() {
   const [newDoctor, setNewDoctor] = useState({
     name: "",
     email: "",
-    phone: "",
+    bio: "",
     specialization: "",
     experience: 0
   })
-  
+
   const { toast } = useToast()
 
   const specializations = [
     "Tim mạch",
-    "Nội khoa", 
+    "Nội khoa",
     "Ngoại khoa",
     "Nhi khoa",
     "Sản phụ khoa",
@@ -131,11 +99,10 @@ export default function DoctorsManagement() {
       id: Date.now(),
       ...newDoctor,
       status: "active",
-      rating: 0,
       avatar: "👨‍⚕️"
     }
     setDoctors([...doctors, doctor])
-    setNewDoctor({ name: "", email: "", phone: "", specialization: "", experience: 0 })
+    setNewDoctor({ name: "", email: "", bio: "", specialization: "", experience: 0 })
     setIsAddDialogOpen(false)
     toast({
       title: "Thành công",
@@ -150,8 +117,8 @@ export default function DoctorsManagement() {
 
   const handleUpdateDoctor = () => {
     if (!editingDoctor) return
-    
-    setDoctors(doctors.map(d => 
+
+    setDoctors(doctors.map(d =>
       d.id === editingDoctor.id ? editingDoctor : d
     ))
     setIsEditDialogOpen(false)
@@ -172,8 +139,8 @@ export default function DoctorsManagement() {
   }
 
   const toggleDoctorStatus = (id: number) => {
-    setDoctors(doctors.map(d => 
-      d.id === id 
+    setDoctors(doctors.map(d =>
+      d.id === id
         ? { ...d, status: d.status === "active" ? "inactive" : "active" as const }
         : d
     ))
@@ -192,7 +159,8 @@ export default function DoctorsManagement() {
             Quản lý thông tin và lịch trình của các bác sĩ
           </p>
         </div>
-        
+
+        {/* Form thêm bác sĩ */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="medical" size="lg">
@@ -200,47 +168,56 @@ export default function DoctorsManagement() {
               Thêm Bác sĩ
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-4xl"> {/* mở rộng dialog hơn */}
             <DialogHeader>
               <DialogTitle>Thêm Bác sĩ Mới</DialogTitle>
               <DialogDescription>
                 Nhập thông tin chi tiết của bác sĩ mới
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {/* Họ và tên */}
+              <div className="col-span-1">
                 <Label htmlFor="name">Họ và tên</Label>
                 <Input
                   id="name"
                   value={newDoctor.name}
-                  onChange={(e) => setNewDoctor({...newDoctor, name: e.target.value})}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, name: e.target.value })}
                   placeholder="VD: BS. Nguyễn Văn A"
                 />
               </div>
-              <div>
+
+              {/* Email */}
+              <div className="col-span-1">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={newDoctor.email}
-                  onChange={(e) => setNewDoctor({...newDoctor, email: e.target.value})}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, email: e.target.value })}
                   placeholder="bacsi@hospital.com"
                 />
               </div>
-              <div>
-                <Label htmlFor="phone">Số điện thoại</Label>
-                <Input
-                  id="phone"
-                  value={newDoctor.phone}
-                  onChange={(e) => setNewDoctor({...newDoctor, phone: e.target.value})}
-                  placeholder="0123456789"
+
+              {/* Bio - chiếm 2 cột */}
+              <div className="col-span-2">
+                <Label htmlFor="bio">Giới thiệu / Bio</Label>
+                <ReactQuill
+                  id="bio"
+                  value={newDoctor.bio}
+                  onChange={(value) => setNewDoctor({ ...newDoctor, bio: value })}
+                  placeholder="Một vài dòng giới thiệu về bác sĩ..."
+                  theme="snow"
                 />
               </div>
-              <div>
+
+              {/* Chuyên khoa */}
+              <div className="col-span-1">
                 <Label htmlFor="specialization">Chuyên khoa</Label>
-                <Select 
-                  value={newDoctor.specialization} 
-                  onValueChange={(value) => setNewDoctor({...newDoctor, specialization: value})}
+                <Select
+                  value={newDoctor.specialization}
+                  onValueChange={(value) => setNewDoctor({ ...newDoctor, specialization: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn chuyên khoa" />
@@ -252,19 +229,22 @@ export default function DoctorsManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+
+              {/* Kinh nghiệm */}
+              <div className="col-span-1">
                 <Label htmlFor="experience">Kinh nghiệm (năm)</Label>
                 <Input
                   id="experience"
                   type="number"
                   value={newDoctor.experience}
-                  onChange={(e) => setNewDoctor({...newDoctor, experience: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, experience: parseInt(e.target.value) || 0 })}
                   placeholder="5"
                   min="0"
                 />
               </div>
             </div>
-            <DialogFooter>
+
+            <DialogFooter className="mt-6">
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Hủy
               </Button>
@@ -292,7 +272,6 @@ export default function DoctorsManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm font-medium">Đang hoạt động</p>
                 <p className="text-2xl font-bold">
@@ -310,19 +289,6 @@ export default function DoctorsManagement() {
                 <p className="text-sm font-medium">Tạm ngưng</p>
                 <p className="text-2xl font-bold">
                   {doctors.filter(d => d.status === "inactive").length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Đánh giá TB</p>
-                <p className="text-2xl font-bold">
-                  {(doctors.reduce((acc, d) => acc + d.rating, 0) / doctors.length).toFixed(1)}
                 </p>
               </div>
             </div>
@@ -356,10 +322,9 @@ export default function DoctorsManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Bác sĩ</TableHead>
-                  <TableHead>Liên hệ</TableHead>
+                  <TableHead>Giới thiệu</TableHead>
                   <TableHead>Chuyên khoa</TableHead>
                   <TableHead>Kinh nghiệm</TableHead>
-                  <TableHead>Đánh giá</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
@@ -384,9 +349,19 @@ export default function DoctorsManagement() {
                           <Mail className="h-3 w-3" />
                           {doctor.email}
                         </div>
+                        {/* Rút gọn bio + popover hiển thị chi tiết */}
                         <div className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3 w-3" />
-                          {doctor.phone}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="link" className="p-0 h-auto text-sm text-muted-foreground">
+                                <FileText className="h-3 w-3 mr-1" />
+                                Xem Bio
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="max-w-sm max-h-[300px] overflow-auto text-sm prose">
+                              {parse(doctor.bio || "<em>Chưa có giới thiệu</em>")}
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                     </TableCell>
@@ -395,13 +370,7 @@ export default function DoctorsManagement() {
                     </TableCell>
                     <TableCell>{doctor.experience} năm</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        {doctor.rating > 0 ? doctor.rating : "Chưa có"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
+                      <Badge
                         variant={doctor.status === "active" ? "success" : "secondary"}
                         className="cursor-pointer"
                         onClick={() => toggleDoctorStatus(doctor.id)}
@@ -445,69 +414,97 @@ export default function DoctorsManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Chỉnh sửa thông tin Bác sĩ</DialogTitle>
             <DialogDescription>
               Cập nhật thông tin chi tiết của bác sĩ
             </DialogDescription>
           </DialogHeader>
+
           {editingDoctor && (
-            <div className="space-y-4">
-              <div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {/* Họ và tên */}
+              <div className="col-span-1">
                 <Label htmlFor="edit-name">Họ và tên</Label>
                 <Input
                   id="edit-name"
                   value={editingDoctor.name}
-                  onChange={(e) => setEditingDoctor({...editingDoctor, name: e.target.value})}
+                  onChange={(e) =>
+                    setEditingDoctor({ ...editingDoctor, name: e.target.value })
+                  }
                 />
               </div>
-              <div>
+
+              {/* Email */}
+              <div className="col-span-1">
                 <Label htmlFor="edit-email">Email</Label>
                 <Input
                   id="edit-email"
                   type="email"
                   value={editingDoctor.email}
-                  onChange={(e) => setEditingDoctor({...editingDoctor, email: e.target.value})}
+                  onChange={(e) =>
+                    setEditingDoctor({ ...editingDoctor, email: e.target.value })
+                  }
                 />
               </div>
-              <div>
-                <Label htmlFor="edit-phone">Số điện thoại</Label>
-                <Input
-                  id="edit-phone"
-                  value={editingDoctor.phone}
-                  onChange={(e) => setEditingDoctor({...editingDoctor, phone: e.target.value})}
+
+              {/* Bio */}
+              <div className="col-span-2">
+                <Label htmlFor="edit-bio">Giới thiệu / Bio</Label>
+                <ReactQuill
+                  id="edit-bio"
+                  value={editingDoctor.bio}
+                  onChange={(value) =>
+                    setEditingDoctor({ ...editingDoctor, bio: value })
+                  }
+                  placeholder="Thông tin giới thiệu về bác sĩ..."
+                  theme="snow"
                 />
               </div>
-              <div>
+
+              {/* Chuyên khoa */}
+              <div className="col-span-1">
                 <Label htmlFor="edit-specialization">Chuyên khoa</Label>
-                <Select 
-                  value={editingDoctor.specialization} 
-                  onValueChange={(value) => setEditingDoctor({...editingDoctor, specialization: value})}
+                <Select
+                  value={editingDoctor.specialization}
+                  onValueChange={(value) =>
+                    setEditingDoctor({ ...editingDoctor, specialization: value })
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Chọn chuyên khoa" />
                   </SelectTrigger>
                   <SelectContent>
                     {specializations.map((spec) => (
-                      <SelectItem key={spec} value={spec}>{spec}</SelectItem>
+                      <SelectItem key={spec} value={spec}>
+                        {spec}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+
+              {/* Kinh nghiệm */}
+              <div className="col-span-1">
                 <Label htmlFor="edit-experience">Kinh nghiệm (năm)</Label>
                 <Input
                   id="edit-experience"
                   type="number"
                   value={editingDoctor.experience}
-                  onChange={(e) => setEditingDoctor({...editingDoctor, experience: parseInt(e.target.value) || 0})}
+                  onChange={(e) =>
+                    setEditingDoctor({
+                      ...editingDoctor,
+                      experience: parseInt(e.target.value) || 0,
+                    })
+                  }
                   min="0"
                 />
               </div>
             </div>
           )}
-          <DialogFooter>
+
+          <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Hủy
             </Button>
