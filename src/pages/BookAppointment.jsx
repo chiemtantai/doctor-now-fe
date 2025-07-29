@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Clock, User2 } from "lucide-react";
+import { getAllDoctors, getAvailableSlots } from "../lib/api"; // Giả sử bạn có một hàm lấy danh sách bác sĩ
+import { useEffect } from "react";
 
 const BookAppointment = () => {
   const [formData, setFormData] = useState({
@@ -19,25 +21,76 @@ const BookAppointment = () => {
   });
   const navigate = useNavigate();
 
-  const doctors = [
-    { id: "1", name: "BS. Nguyễn Văn A", specialty: "Tim mạch" },
-    { id: "2", name: "BS. Trần Thị B", specialty: "Da liễu" },
-    { id: "3", name: "BS. Lê Văn C", specialty: "Nội khoa" },
-    { id: "4", name: "BS. Phạm Thị D", specialty: "Nhi khoa" },
-    { id: "5", name: "BS. Hoàng Văn E", specialty: "Tai Mũi Họng" }
-  ];
+  const [doctors, setDoctors] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  
 
-  const timeSlots = [
-    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
-    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"
-  ];
 
-  const handleChange = (field, value) => {
-    setFormData({
-      ...formData,
-      [field]: value
-    });
+useEffect(() => {
+  const fetchDoctors = async () => {
+    try {
+      const data = await getAllDoctors();
+      setDoctors(data);
+    } catch (err) {
+      toast({
+        title: "Lỗi tải danh sách bác sĩ",
+        description: "Không thể kết nối tới máy chủ",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingDoctors(false);
+    }
   };
+
+  fetchDoctors();
+}, []);
+useEffect(() => {
+  const fetchSlots = async () => {
+    if (!formData.doctor || !formData.date) return;
+
+    console.log("📅 Fetching slots for:", formData);
+
+    setLoadingSlots(true);
+    try {
+      const raw = await getAvailableSlots(formData.doctor, formData.date);
+      const mapped = raw.map(s => ({
+        id: s.slotId,
+        label: s.startTime.split(" ")[1],
+        ...s
+      }));
+      setTimeSlots(mapped);
+    } catch (err) {
+      console.error("❌ Lỗi tải khung giờ:", err);
+      toast({ title: "Lỗi", description: "Không tải được khung giờ" });
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  fetchSlots();
+}, [formData.doctor, formData.date]);
+
+
+
+const handleChange = (field, value) => {
+  if (field === "time") {
+    const selectedSlot = timeSlots.find(s => s.label === value);
+    setFormData(prev => ({
+      ...prev,
+      time: value,
+      slotId: selectedSlot?.id || ""
+    }));
+  } else {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+      ...(field === "doctor" || field === "date" ? { time: "", slotId: "" } : {})
+    }));
+  }
+};
+ 
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -91,18 +144,23 @@ const BookAppointment = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="doctor">Chọn bác sĩ *</Label>
-                      <Select onValueChange={(value) => handleChange("doctor", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn bác sĩ" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {doctors.map((doctor) => (
-                            <SelectItem key={doctor.id} value={doctor.id}>
-                              {doctor.name} - {doctor.specialty}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                     <Select onValueChange={(value) => handleChange("doctor", value)}>
+  <SelectTrigger>
+    <SelectValue placeholder="Chọn bác sĩ" />
+  </SelectTrigger>
+  <SelectContent>
+    {loadingDoctors ? (
+      <p className="text-sm text-muted-foreground px-4 py-2">Đang tải...</p>
+    ) : (
+      doctors.map((doctor) => (
+        <SelectItem key={doctor.id} value={doctor.id}>
+          {doctor.fullName} - {doctor.specialty}
+        </SelectItem>
+      ))
+    )}
+  </SelectContent>
+</Select>
+
                     </div>
 
                     <div className="space-y-2">
@@ -118,22 +176,26 @@ const BookAppointment = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Giờ khám *</Label>
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                      {timeSlots.map((time) => (
-                        <Button
-                          key={time}
-                          type="button"
-                          variant={formData.time === time ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleChange("time", time)}
-                        >
-                          {time}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
+                 {formData.doctor && formData.date && (
+  <div className="space-y-2">
+    <Label>Giờ khám *</Label>
+    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+      {timeSlots.map((slot) => (
+  <Button
+    key={slot.id}
+    type="button"
+    variant={formData.time === slot.label ? "default" : "outline"}
+    size="sm"
+    onClick={() => handleChange("time", slot.label)}
+  >
+    {slot.label}
+  </Button>
+))}
+
+    </div>
+  </div>
+)}
+
 
                   <div className="space-y-2">
                     <Label htmlFor="reason">Lý do khám</Label>

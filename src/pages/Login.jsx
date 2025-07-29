@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { login } from "../lib/api"; // Giả sử bạn có một hàm Login trong api/auth
+import { useAuth } from "../hooks/useAuth";
 
 const Login = ({ onLogin }) => {
+  const { loginUser } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -20,32 +23,65 @@ const Login = ({ onLogin }) => {
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Simple validation
-    if (!formData.email || !formData.password) {
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!formData.email || !formData.password) {
+    toast({
+      title: "Lỗi",
+      description: "Vui lòng điền đầy đủ thông tin",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  try {
+    console.log("🟡 Sending login with:", formData);
+
+    const result = await loginUser(formData.email, formData.password); 
+
+    console.log("🟢 API login result:", result);
+
+    if (!result || !result.roleId) {
+      console.warn("⚠️ Không có roleId trong response");
+    }
+
+    if (result.roleId !== 2) {
+      console.warn("🔴 Blocked user with roleId:", result.roleId);
+
       toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin",
+        title: "Truy cập bị từ chối",
+        description: "Tài khoản không có quyền truy cập Dashboard bệnh nhân",
         variant: "destructive"
       });
+
+      navigate("/"); // hoặc redirect khác nếu muốn
+
       return;
     }
 
-    // Mock login - in real app, this would call an API
-    onLogin({
-      email: formData.email,
-      name: "Người dùng"
-    });
-    
+    console.log("✅ User hợp lệ - login thành công");
+
+    onLogin({ token: result.token, roleId: result.roleId, name: result.name });
+
     toast({
       title: "Đăng nhập thành công",
-      description: "Chào mừng bạn quay trở lại!"
+      description: `Chào mừng, ${result.name || "bạn"}!`
     });
-    
+
     navigate("/dashboard");
-  };
+
+  } catch (err) {
+    console.error("🔥 Login error:", err);
+
+    toast({
+      title: "Đăng nhập thất bại",
+      description: err.message || "Tài khoản hoặc mật khẩu không đúng",
+      variant: "destructive"
+    });
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-medical-light px-4">
