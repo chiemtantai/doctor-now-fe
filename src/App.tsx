@@ -7,12 +7,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import BookAppointment from "./pages/BookAppointment";
-import History from "./pages/History";
+import Dashboard from "./pages/patient/Dashboard";
+import BookAppointment from "./pages/patient/BookAppointment";
+import History from "./pages/patient/History";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import DoctorsManagement from "./pages/admin/DoctorsManagement";
+import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import Schedule from "./pages/doctor/Schedule";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 const queryClient = new QueryClient();
@@ -73,6 +75,16 @@ const App = () => {
             <Route
               path="/admin/doctors"
               element={<AdminLayout><DoctorsManagement /></AdminLayout>}
+            />
+
+            {/* Doctor Dashboard */}
+            <Route
+              path="/doctor"
+              element={<DoctorDashboard />}
+            />
+            <Route
+              path="/doctor/schedule"
+              element={<Schedule />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
