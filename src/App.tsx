@@ -16,11 +16,15 @@ import DoctorsManagement from "./pages/admin/DoctorsManagement";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import Schedule from "./pages/doctor/Schedule";
 import NotFound from "./pages/NotFound";
-
+import ProtectedRoute from "./components/ProtectedRoute";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [user, setUser] = useState(null);
+ const [user, setUser] = useState(() => {
+  const token = localStorage.getItem("token");
+  const roleId = localStorage.getItem("roleId");
+  return token && roleId === "1" ? { token, roleId: 1 } : null;
+});
 
   const handleLogin = (userData) => {
     setUser(userData);
