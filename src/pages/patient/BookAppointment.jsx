@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Clock, User2 } from "lucide-react";
-import { getAllDoctors, getAvailableSlots } from "../lib/api"; // Giả sử bạn có một hàm lấy danh sách bác sĩ
+import { getAllDoctors, getAvailableSlots } from "../../lib/api"; // Giả sử bạn có một hàm lấy danh sách bác sĩ
 import { useEffect } from "react";
 
 const BookAppointment = () => {
