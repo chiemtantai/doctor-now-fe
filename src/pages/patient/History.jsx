@@ -1,64 +1,80 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, User2, Search, Filter } from "lucide-react";
+import { Calendar, Clock, User2, Search, Filter, Loader2 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { appointmentService } from '../../services/appointmentService';
 
 const History = () => {
+  const { user } = useAuth(); // Lấy thông tin user từ AuthContext
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const appointments = [
-    {
-      id: 1,
-      doctor: "BS. Nguyễn Văn A",
-      specialty: "Tim mạch",
-      date: "2024-01-25",
-      time: "09:00",
-      status: "confirmed",
-      reason: "Khám định kỳ",
-      result: "Chưa có kết quả"
-    },
-    {
-      id: 2,
-      doctor: "BS. Trần Thị B",
-      specialty: "Da liễu",
-      date: "2024-01-20",
-      time: "14:30",
-      status: "completed",
-      reason: "Viêm da",
-      result: "Đã cấp thuốc, tái khám sau 1 tuần"
-    },
-    {
-      id: 3,
-      doctor: "BS. Lê Văn C",
-      specialty: "Nội khoa",
-      date: "2024-01-15",
-      time: "10:00",
-      status: "completed",
-      reason: "Đau bụng",
-      result: "Viêm dạ dày nhẹ, đã điều trị"
-    },
-    {
-      id: 4,
-      doctor: "BS. Phạm Thị D",
-      specialty: "Nhi khoa",
-      date: "2024-01-10",
-      time: "08:30",
-      status: "cancelled",
-      reason: "Sốt cao",
-      result: "Đã hủy"
-    }
-  ];
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      // Debug: Log user object
+      console.log("User object:", user);
+      console.log("User ID:", user?.userId);
+      
+      if (!user?.userId) {
+        console.log("No userId found");
+        setError("Không tìm thấy thông tin bệnh nhân");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Debug: Log API call
+        console.log("Calling API with userId:", user.userId);
+        
+        const data = await appointmentService.getPatientAppointments(user.userId);
+        
+        // Debug: Log response
+        console.log("API response:", data);
+        
+        setAppointments(data);
+      } catch (err) {
+        // Debug: Log full error
+        console.error("Full error object:", err);
+        console.error("Error message:", err.message);
+        
+        setError("Không thể tải lịch sử khám bệnh. Vui lòng thử lại sau.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, [user?.userId]); 
+
+  const formatDate = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const formatTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    return date.toLocaleTimeString('vi-VN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
+      case "booked":
+        return "bg-primary text-primary-foreground";
       case "completed":
         return "bg-success text-success-foreground";
-      case "confirmed":
-        return "bg-primary text-primary-foreground";
       case "cancelled":
         return "bg-destructive text-destructive-foreground";
       default:
@@ -67,11 +83,11 @@ const History = () => {
   };
 
   const getStatusText = (status) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
+      case "booked":
+        return "Đã đặt lịch";
       case "completed":
         return "Đã hoàn thành";
-      case "confirmed":
-        return "Đã xác nhận";
       case "cancelled":
         return "Đã hủy";
       default:
@@ -80,11 +96,43 @@ const History = () => {
   };
 
   const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = appointment.doctor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         appointment.specialty.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || appointment.status === statusFilter;
+    const matchesSearch = appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || appointment.status.toLowerCase() === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-medical-light">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-muted-foreground">Đang tải lịch sử khám bệnh...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-medical-light">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="text-destructive text-lg font-medium mb-2">Có lỗi xảy ra</div>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Thử lại
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-medical-light">
@@ -111,7 +159,7 @@ const History = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Tìm theo tên bác sĩ hoặc chuyên khoa..."
+                  placeholder="Tìm theo tên bác sĩ..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -124,7 +172,7 @@ const History = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="confirmed">Đã xác nhận</SelectItem>
+                  <SelectItem value="booked">Đã đặt lịch</SelectItem>
                   <SelectItem value="completed">Đã hoàn thành</SelectItem>
                   <SelectItem value="cancelled">Đã hủy</SelectItem>
                 </SelectContent>
@@ -137,14 +185,13 @@ const History = () => {
         <div className="space-y-4">
           {filteredAppointments.length > 0 ? (
             filteredAppointments.map((appointment) => (
-              <Card key={appointment.id}>
+              <Card key={appointment.slotId}>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <User2 className="w-5 h-5 text-primary" />
-                        <h3 className="font-semibold text-lg">{appointment.doctor}</h3>
-                        <Badge variant="outline">{appointment.specialty}</Badge>
+                        <h3 className="font-semibold text-lg">{appointment.doctorName}</h3>
                         <Badge className={getStatusColor(appointment.status)}>
                           {getStatusText(appointment.status)}
                         </Badge>
@@ -153,37 +200,32 @@ const History = () => {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          {appointment.date}
+                          {formatDate(appointment.startTime)}
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {appointment.time}
+                          {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
                         </div>
                       </div>
 
                       <div className="space-y-2">
                         <div>
-                          <span className="font-medium">Lý do khám: </span>
-                          <span className="text-muted-foreground">{appointment.reason}</span>
+                          <span className="font-medium">Mã lịch hẹn: </span>
+                          <span className="text-muted-foreground text-xs font-mono">
+                            {appointment.slotId}
+                          </span>
                         </div>
-                        
-                        {appointment.result && (
-                          <div>
-                            <span className="font-medium">Kết quả: </span>
-                            <span className="text-muted-foreground">{appointment.result}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      {appointment.status === "confirmed" && (
+                      {appointment.status.toLowerCase() === "booked" && (
                         <Button variant="outline" size="sm">
                           Hủy lịch hẹn
                         </Button>
                       )}
                       
-                      {appointment.status === "completed" && (
+                      {appointment.status.toLowerCase() === "completed" && (
                         <Button variant="outline" size="sm">
                           Xem chi tiết
                         </Button>
@@ -217,29 +259,22 @@ const History = () => {
         </div>
 
         {/* Summary */}
-        {filteredAppointments.length > 0 && (
+        {appointments.length > 0 && (
           <Card className="mt-6">
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-primary">
-                    {appointments.filter(a => a.status === "completed").length}
+                    {appointments.filter(a => a.status.toLowerCase() === "booked").length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Đã đặt lịch</div>
+                </div>
+                
+                <div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {appointments.filter(a => a.status.toLowerCase() === "completed").length}
                   </div>
                   <div className="text-sm text-muted-foreground">Đã hoàn thành</div>
-                </div>
-                
-                <div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {appointments.filter(a => a.status === "confirmed").length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Đã xác nhận</div>
-                </div>
-                
-                <div>
-                  <div className="text-2xl font-bold text-destructive">
-                    {appointments.filter(a => a.status === "cancelled").length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Đã hủy</div>
                 </div>
                 
                 <div>
