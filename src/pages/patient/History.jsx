@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,52 +6,47 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, User2, Search, Filter } from "lucide-react";
 
+
+import { getAllDoctors, getAppointmentHistory } from "../../lib/api";
+
+
 const History = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const appointments = [
-    {
-      id: 1,
-      doctor: "BS. Nguyễn Văn A",
-      specialty: "Tim mạch",
-      date: "2024-01-25",
-      time: "09:00",
-      status: "confirmed",
-      reason: "Khám định kỳ",
-      result: "Chưa có kết quả"
-    },
-    {
-      id: 2,
-      doctor: "BS. Trần Thị B",
-      specialty: "Da liễu",
-      date: "2024-01-20",
-      time: "14:30",
-      status: "completed",
-      reason: "Viêm da",
-      result: "Đã cấp thuốc, tái khám sau 1 tuần"
-    },
-    {
-      id: 3,
-      doctor: "BS. Lê Văn C",
-      specialty: "Nội khoa",
-      date: "2024-01-15",
-      time: "10:00",
-      status: "completed",
-      reason: "Đau bụng",
-      result: "Viêm dạ dày nhẹ, đã điều trị"
-    },
-    {
-      id: 4,
-      doctor: "BS. Phạm Thị D",
-      specialty: "Nhi khoa",
-      date: "2024-01-10",
-      time: "08:30",
-      status: "cancelled",
-      reason: "Sốt cao",
-      result: "Đã hủy"
-    }
-  ];
+  const [appointments, setAppointments] = useState([]);
+const [loading, setLoading] = useState(true);
+   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const patientId = localStorage.getItem("userId");
+        if (!patientId) throw new Error("Chưa đăng nhập");
+
+        const [historyData, doctorsData] = await Promise.all([
+          getAppointmentHistory(patientId),
+          getAllDoctors()
+        ]);
+
+        const merged = historyData.map((slot) => {
+          const doc = doctorsData.find((d) => d.id === slot.doctorId);
+          return {
+            ...slot,
+            doctor: doc?.fullName || slot.doctorName,
+            avatar: doc?.avatar,
+            specialty: doc?.specialty
+          };
+        });
+
+        setAppointments(merged);
+      } catch (err) {
+        console.error("❌ Lỗi tải lịch sử:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -140,40 +135,52 @@ const History = () => {
               <Card key={appointment.id}>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <User2 className="w-5 h-5 text-primary" />
-                        <h3 className="font-semibold text-lg">{appointment.doctor}</h3>
-                        <Badge variant="outline">{appointment.specialty}</Badge>
-                        <Badge className={getStatusColor(appointment.status)}>
-                          {getStatusText(appointment.status)}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {appointment.date}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {appointment.time}
-                        </div>
-                      </div>
+                   <div className="flex-1">
+  <div className="flex items-center gap-3 mb-2">
+    {appointment.avatar ? (
+      <img
+        src={appointment.avatar}
+        alt="avatar"
+        className="w-10 h-10 rounded-full object-cover"
+      />
+    ) : (
+      <User2 className="w-5 h-5 text-primary" />
+    )}
+    <h3 className="font-semibold text-lg">{appointment.doctor}</h3>
+    <Badge variant="outline">{appointment.specialty}</Badge>
+    <Badge className={getStatusColor(appointment.status)}>
+      {getStatusText(appointment.status)}
+    </Badge>
+  </div>
 
-                      <div className="space-y-2">
-                        <div>
-                          <span className="font-medium">Lý do khám: </span>
-                          <span className="text-muted-foreground">{appointment.reason}</span>
-                        </div>
-                        
-                        {appointment.result && (
-                          <div>
-                            <span className="font-medium">Kết quả: </span>
-                            <span className="text-muted-foreground">{appointment.result}</span>
-                          </div>
-                        )}
-                      </div>
+  {/* Di chuyển các phần này vào bên trong */}
+  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+    <div className="flex items-center gap-1">
+      <Calendar className="w-4 h-4" />
+      {appointment.date}
+    </div>
+    <div className="flex items-center gap-1">
+      <Clock className="w-4 h-4" />
+      {appointment.time}
+    </div>
+  </div>
+
+  <div className="space-y-2">
+    <div>
+      <span className="font-medium">Lý do khám: </span>
+      <span className="text-muted-foreground">{appointment.reason}</span>
+    </div>
+
+    {appointment.result && (
+      <div>
+        <span className="font-medium">Kết quả: </span>
+        <span className="text-muted-foreground">{appointment.result}</span>
+      </div>
+    )}
+  </div>
+
+
+                      
                     </div>
 
                     <div className="flex flex-col gap-2">

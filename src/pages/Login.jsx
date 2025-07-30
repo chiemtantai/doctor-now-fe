@@ -63,7 +63,9 @@ const handleSubmit = async (e) => {
     console.log("✅ User hợp lệ - login thành công");
 
     onLogin({ token: result.token, roleId: result.roleId, name: result.name });
-
+localStorage.setItem("userId", result.id); // 👈 result.id phải chứa userId từ backend
+    localStorage.setItem("token", result.token); // Lưu token nếu cần
+    localStorage.setItem("roleId", result.roleId); // Lưu roleId nếu
     toast({
       title: "Đăng nhập thành công",
       description: `Chào mừng, ${result.name || "bạn"}!`
