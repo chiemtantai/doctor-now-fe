@@ -1,3 +1,4 @@
+// pages/Login.tsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,85 +6,77 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { login } from "../lib/api"; // Giả sử bạn có một hàm Login trong api/auth
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const { loginUser } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   });
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  if (!formData.email || !formData.password) {
-    toast({
-      title: "Lỗi",
-      description: "Vui lòng điền đầy đủ thông tin",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  try {
-    console.log("🟡 Sending login with:", formData);
-
-    const result = await loginUser(formData.email, formData.password); 
-
-    console.log("🟢 API login result:", result);
-
-    if (!result || !result.roleId) {
-      console.warn("⚠️ Không có roleId trong response");
-    }
-
-    if (result.roleId !== 2) {
-      console.warn("🔴 Blocked user with roleId:", result.roleId);
-
+    if (!formData.email || !formData.password) {
       toast({
-        title: "Truy cập bị từ chối",
-        description: "Tài khoản không có quyền truy cập Dashboard bệnh nhân",
+        title: "Lỗi",
+        description: "Vui lòng điền đầy đủ thông tin",
         variant: "destructive"
       });
-
-      navigate("/"); // hoặc redirect khác nếu muốn
-
       return;
     }
 
-    console.log("✅ User hợp lệ - login thành công");
+    setLoading(true);
 
-    onLogin({ token: result.token, roleId: result.roleId, name: result.name });
-localStorage.setItem("userId", result.id); // 👈 result.id phải chứa userId từ backend
-    localStorage.setItem("token", result.token); // Lưu token nếu cần
-    localStorage.setItem("roleId", result.roleId); // Lưu roleId nếu
-    toast({
-      title: "Đăng nhập thành công",
-      description: `Chào mừng, ${result.name || "bạn"}!`
-    });
+    try {
+      console.log("🟡 Sending login with:", formData);
 
-    navigate("/dashboard");
+      const result = await loginUser(formData.email, formData.password);
 
-  } catch (err) {
-    console.error("🔥 Login error:", err);
+      console.log("🟢 Login result:", result);
 
-    toast({
-      title: "Đăng nhập thất bại",
-      description: err.message || "Tài khoản hoặc mật khẩu không đúng",
-      variant: "destructive"
-    });
-  }
-};
+      if (!result || typeof result.roleId === 'undefined') {
+        console.warn("⚠️ Không có roleId trong response");
+        toast({
+          title: "Lỗi đăng nhập",
+          description: "Không thể xác định quyền truy cập",
+          variant: "destructive"
+        });
+        return;
+      }
 
+      console.log("✅ User hợp lệ - login thành công với roleId:", result.roleId);
+
+      toast({
+        title: "Đăng nhập thành công",
+        description: `Chào mừng, ${result.name || "bạn"}!`
+      });
+
+      // Navigation sẽ được xử lý bởi AuthContext và App routing
+      // Không cần navigate manually ở đây nữa
+
+    } catch (err: any) {
+      console.error("🔥 Login error:", err);
+
+      toast({
+        title: "Đăng nhập thất bại",
+        description: err.message || "Tài khoản hoặc mật khẩu không đúng",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-medical-light px-4">
@@ -106,6 +99,7 @@ localStorage.setItem("userId", result.id); // 👈 result.id phải chứa userI
                 value={formData.email}
                 onChange={handleChange}
                 required
+                disabled={loading}
               />
             </div>
             
@@ -119,11 +113,12 @@ localStorage.setItem("userId", result.id); // 👈 result.id phải chứa userI
                 value={formData.password}
                 onChange={handleChange}
                 required
+                disabled={loading}
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Đăng nhập
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
           </form>
           
