@@ -9,13 +9,12 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "../contexts/AuthContext";
 
 const Login = () => {
-  const { loginUser } = useAuth();
+  const { loginUser, loginDoctor } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   });
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -39,40 +38,39 @@ const Login = () => {
     setLoading(true);
 
     try {
-      console.log("🟡 Sending login with:", formData);
-
+      console.log("🟡 Đăng nhập qua UserService...");
       const result = await loginUser(formData.email, formData.password);
 
-      console.log("🟢 Login result:", result);
-
       if (!result || typeof result.roleId === 'undefined') {
-        console.warn("⚠️ Không có roleId trong response");
-        toast({
-          title: "Lỗi đăng nhập",
-          description: "Không thể xác định quyền truy cập",
-          variant: "destructive"
-        });
-        return;
+        throw new Error("Không thể xác định role từ UserService");
       }
 
-      console.log("✅ User hợp lệ - login thành công với roleId:", result.roleId);
+      console.log("🟢 Đăng nhập thành công (user):", result);
+      toast({ title: "Đăng nhập thành công", description: `Xin chào ${result.name}` });
+      return;
+    } catch (userError) {
+      console.warn("🔁 Thử đăng nhập qua DoctorService...");
 
-      toast({
-        title: "Đăng nhập thành công",
-        description: `Chào mừng, ${result.name || "bạn"}!`
-      });
+      try {
+        const result = await loginDoctor(formData.email, formData.password);
+        console.log(result)
+        if (!result || typeof result.roleId === 'undefined') {
+          throw new Error("Không thể xác định role từ DoctorService");
+        }
 
-      // Navigation sẽ được xử lý bởi AuthContext và App routing
-      // Không cần navigate manually ở đây nữa
+        console.log("🟢 Đăng nhập thành công (doctor):", result);
+        toast({ title: "Đăng nhập thành công", description: `Xin chào ${result.name}` });
+        return;
+      } catch (doctorError) {
+        console.error("🔥 Đăng nhập thất bại:", doctorError);
 
-    } catch (err: any) {
-      console.error("🔥 Login error:", err);
-
-      toast({
-        title: "Đăng nhập thất bại",
-        description: err.message || "Tài khoản hoặc mật khẩu không đúng",
-        variant: "destructive"
-      });
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Email hoặc mật khẩu không đúng",
+          variant: "destructive"
+        });
+      }
+      
     } finally {
       setLoading(false);
     }
@@ -102,7 +100,7 @@ const Login = () => {
                 disabled={loading}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Mật khẩu</Label>
               <Input
@@ -121,7 +119,7 @@ const Login = () => {
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
           </form>
-          
+
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground">Chưa có tài khoản? </span>
             <Link to="/register" className="text-primary hover:underline">

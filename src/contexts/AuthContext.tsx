@@ -1,6 +1,7 @@
 // contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { login } from '../lib/api';
+import { loginDoctor as loginDoctorApi } from '../lib/DoctorApi';
 
 // Types
 interface User {
@@ -10,10 +11,19 @@ interface User {
   roleId: number;
 }
 
+interface DoctorTokenPayload {
+  sub: string;
+  unique_name: string;
+  email: string;
+  role: string;
+  [key: string]: any;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   loginUser: (email: string, password: string) => Promise<any>;
+  loginDoctor: (email: string, password: string) => Promise<any>;
   logout: () => void;
   getToken: () => string | null;
 }
@@ -30,17 +40,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Simple JWT decode (không cần thư viện nếu chỉ cần payload)
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join(''));
 
       const decoded = JSON.parse(jsonPayload);
       console.log("Decoded token:", decoded);
-      
+
       // Xử lý role claim đặc biệt của Microsoft
       const roleClaimKey = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
       const roleValue = decoded[roleClaimKey] || decoded.role || decoded.roleId || decoded.roleid;
-      
+
       return {
         userId: decoded.id || decoded.userId || decoded.sub || decoded.nameid,
         email: decoded.email || decoded.unique_name || '',
@@ -53,51 +63,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getDoctorFromToken = (token: string): User | null => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+
+      const decoded: DoctorTokenPayload = JSON.parse(jsonPayload);
+      console.log("🔍 Decoded doctor token:", decoded);
+
+      if (decoded.role !== "Doctor") {
+        console.warn("❌ Token is not from a doctor");
+        return null;
+      }
+
+      return {
+        userId: decoded.nameid || '',
+        email: decoded.email || '',
+        name: decoded.unique_name || 'Doctor',
+        roleId: 3
+      };
+    } catch (error) {
+      console.error("❌ Error decoding doctor token:", error);
+      return null;
+    }
+  };
+
   // Khôi phục user từ localStorage khi app load
   useEffect(() => {
     const initAuth = () => {
       const token = localStorage.getItem('token');
-      const storedRoleId = localStorage.getItem('roleId');
-      const storedUserId = localStorage.getItem('userId');
-      const storedName = localStorage.getItem('name');
-      const storedEmail = localStorage.getItem('email');
-
       if (token) {
-        // Thử decode token trước
-        const tokenUser = getUserFromToken(token);
-        
+        let tokenUser = getUserFromToken(token);
+
+        if (!tokenUser) {
+          tokenUser = getDoctorFromToken(token);
+        }
+
         if (tokenUser) {
           setUser(tokenUser);
-          console.log("User restored from token:", tokenUser);
-          
-          // Validate that we have all required fields
+          console.log("✅ User restored from token:", tokenUser);
+
           if (!tokenUser.userId || isNaN(tokenUser.roleId)) {
             console.error("❌ Invalid user data from token:", tokenUser);
-            // Clear invalid data
-            localStorage.removeItem('token');
-            localStorage.removeItem('roleId');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('name');
-            localStorage.removeItem('email');
+            localStorage.clear();
             setUser(null);
           }
-        } else if (storedUserId && storedRoleId) {
-          // Fallback: sử dụng dữ liệu từ localStorage
-          const userData: User = {
-            userId: storedUserId,
-            email: storedEmail || '',
-            name: storedName || '',
-            roleId: parseInt(storedRoleId),
-          };
-          setUser(userData);
-          console.log("User restored from localStorage:", userData);
         } else {
-          // Token không hợp lệ và không có dữ liệu backup
-          localStorage.removeItem('token');
-          localStorage.removeItem('roleId');
-          localStorage.removeItem('userId');
-          localStorage.removeItem('name');
-          localStorage.removeItem('email');
+          console.warn("⚠️ Token invalid or unsupported");
+          localStorage.clear();
+          setUser(null);
         }
       }
       setLoading(false);
@@ -114,10 +134,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response?.token) {
         // Lưu token
         localStorage.setItem('token', response.token);
-        
+
         // Thử decode token để lấy user info
         const tokenUser = getUserFromToken(response.token);
-        
+
         // Tạo user data từ API response hoặc token
         const finalUserData: User = {
           userId: response.userId || tokenUser?.userId || '',
@@ -134,13 +154,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setUser(finalUserData);
         console.log("User set after login:", finalUserData);
-        
+
         return response;
       }
 
       throw new Error('No token received');
     } catch (error) {
       console.error("Login error:", error);
+      throw error;
+    }
+  };
+
+  const loginDoctor = async (email: string, password: string) => {
+    try {
+      const response = await loginDoctorApi({ email, password });
+      console.log("LoginDoctor API response:", response);
+
+      if (response?.token) {
+        localStorage.setItem('token', response.token);
+
+        const doctor = getDoctorFromToken(response.token);
+        console.log("👨‍⚕️ Decoded doctor:", doctor);
+
+        if (!doctor) throw new Error("Invalid doctor token");
+
+        console.log(doctor)
+        // Chuyển về đúng kiểu `User`
+        const finalDoctorData: User = {
+          userId: doctor.userId,
+          email: doctor.email,
+          name: doctor.name,
+          roleId: doctor.roleId,
+        };
+
+        // Lưu vào localStorage
+        localStorage.setItem('userId', finalDoctorData.userId);
+        localStorage.setItem('roleId', finalDoctorData.roleId.toString());
+        localStorage.setItem('name', finalDoctorData.name);
+        localStorage.setItem('email', finalDoctorData.email);
+
+        setUser(finalDoctorData);
+        console.log("✅ Doctor user set after login:", finalDoctorData);
+
+        return finalDoctorData;
+      }
+
+      throw new Error('No token received');
+    } catch (error) {
+      console.error("❌ Doctor login error:", error);
       throw error;
     }
   };
@@ -162,6 +223,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     loading,
     loginUser,
+    loginDoctor,
     logout,
     getToken
   };

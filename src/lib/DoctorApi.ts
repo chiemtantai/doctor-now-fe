@@ -34,6 +34,7 @@ export interface DoctorLoginRequest {
 }
 
 const API_BASE_URL = "https://localhost:7227/doctor";
+const API_APPOINTMENT_BASE_URL = "https://localhost:7227/api";
 
 // GET /doctors
 export const getDoctorsPaged = async (pageIndex = 1, pageSize = 10) => {
@@ -117,4 +118,12 @@ export const loginDoctor = async (request: DoctorLoginRequest): Promise<any> => 
 
   if (!res.ok) throw new Error("Login failed");
   return res.json();
+};
+
+// GET /gatewayslots/booked
+export const getBookedSlotsByDoctor = async (doctorId: string, date: string): Promise<any[]> => {
+  const res = await fetch(`${API_APPOINTMENT_BASE_URL}/booked?doctorId=${doctorId}&date=${date}`);
+  if (!res.ok) throw new Error("Failed to fetch booked slots");
+  const data = await res.json();
+  return data.slots;
 };

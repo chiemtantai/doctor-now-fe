@@ -1,19 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Plus, Users, Clock } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
+import { getBookedSlotsByDoctor } from "../../lib/DoctorApi";
 
 const Schedule = () => {
-  const [todaySchedule, setTodaySchedule] = useState([
-    { id: 1, time: "08:00", patient: "Nguyễn Thị B", type: "Khám tổng quát", status: "completed" },
-    { id: 2, time: "09:00", patient: "Trần Văn C", type: "Tái khám", status: "waiting" },
-    { id: 3, time: "10:00", patient: "", type: "", status: "available" },
-    { id: 4, time: "11:00", patient: "", type: "", status: "available" },
-  ]);
-
+  const [todaySchedule, setTodaySchedule] = useState([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        const doctorId = localStorage.getItem("userId");
+        const today = new Date().toISOString().split("T")[0];
+        console.log(doctorId)
+        if (!doctorId) return;
+
+        const slots = await getBookedSlotsByDoctor(doctorId, today);
+
+        const formattedSlots = slots.map((slot, index) => ({
+          id: slot.id || index + 1,
+          time: new Date(slot.startTime).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          patient: slot.patientName || "Bệnh nhân chưa xác định",
+          type: "Khám bệnh",
+          status: slot.status.toLowerCase(),
+        }));
+
+        setTodaySchedule(formattedSlots);
+      } catch (error) {
+        console.error("Error fetching booked slots:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể lấy lịch đã đặt",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchSchedule();
+  }, []);
 
   const createTodaySchedule = () => {
     const newSchedule = [
@@ -26,7 +56,7 @@ const Schedule = () => {
       { id: 7, time: "16:00", patient: "", type: "", status: "available" },
       { id: 8, time: "17:00", patient: "", type: "", status: "available" },
     ];
-    
+
     setTodaySchedule(newSchedule);
     toast({
       title: "Tạo lịch thành công",
@@ -91,7 +121,7 @@ const Schedule = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {todaySchedule.filter(s => s.status === "completed" || s.status === "waiting" || s.status === "booked").length}
+                {todaySchedule.filter(s => ["completed", "waiting", "booked"].includes(s.status)).length}
               </div>
             </CardContent>
           </Card>
@@ -120,12 +150,8 @@ const Schedule = () => {
                   <div className="flex items-center gap-4">
                     <div className="font-medium text-lg">{slot.time}</div>
                     <div>
-                      <p className="font-medium">
-                        {slot.patient || "Chưa có bệnh nhân"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {slot.type || "Slot trống"}
-                      </p>
+                      <p className="font-medium">{slot.patient || "Chưa có bệnh nhân"}</p>
+                      <p className="text-sm text-muted-foreground">{slot.type || "Slot trống"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
