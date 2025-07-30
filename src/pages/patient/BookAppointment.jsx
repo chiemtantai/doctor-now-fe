@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Clock, User2 } from "lucide-react";
-import { getAllDoctors, getAvailableSlots } from "../../lib/api"; // Giả sử bạn có một hàm lấy danh sách bác sĩ
+import { getAllDoctors, getAvailableSlots } from "../../lib/api";
 import { useEffect } from "react";
 import { bookSlot } from "../../lib/api"; 
 
@@ -41,73 +41,73 @@ const handleBook = async (slotId) => {
   }
 };
 
-useEffect(() => {
-  const fetchDoctors = async () => {
-    try {
-      const data = await getAllDoctors();
-      setDoctors(data);
-    } catch (err) {
-      toast({
-        title: "Lỗi tải danh sách bác sĩ",
-        description: "Không thể kết nối tới máy chủ",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingDoctors(false);
-    }
-  };
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const data = await getAllDoctors();
+        setDoctors(data);
+      } catch (err) {
+        toast({
+          title: "Lỗi tải danh sách bác sĩ",
+          description: "Không thể kết nối tới máy chủ",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDoctors(false);
+      }
+    };
 
-  fetchDoctors();
-}, []);
-useEffect(() => {
-  const fetchSlots = async () => {
-    if (!formData.doctor || !formData.date) return;
+    fetchDoctors();
+  }, []);
+  useEffect(() => {
+    const fetchSlots = async () => {
+      if (!formData.doctor || !formData.date) return;
 
-    console.log("📅 Fetching slots for:", formData);
+      console.log("📅 Fetching slots for:", formData);
 
-    setLoadingSlots(true);
-    try {
-      const raw = await getAvailableSlots(formData.doctor, formData.date);
-      const mapped = raw.map(s => ({
-        id: s.slotId,
-        label: s.startTime.split(" ")[1],
-        ...s
+      setLoadingSlots(true);
+      try {
+        const raw = await getAvailableSlots(formData.doctor, formData.date);
+        const mapped = raw.map(s => ({
+          id: s.slotId,
+          label: s.startTime.split(" ")[1],
+          ...s
+        }));
+        setTimeSlots(mapped);
+      } catch (err) {
+        console.error("❌ Lỗi tải khung giờ:", err);
+        toast({ title: "Lỗi", description: "Không tải được khung giờ" });
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
+    fetchSlots();
+  }, [formData.doctor, formData.date]);
+
+
+
+  const handleChange = (field, value) => {
+    if (field === "time") {
+      const selectedSlot = timeSlots.find(s => s.label === value);
+      setFormData(prev => ({
+        ...prev,
+        time: value,
+        slotId: selectedSlot?.id || ""
       }));
-      setTimeSlots(mapped);
-    } catch (err) {
-      console.error("❌ Lỗi tải khung giờ:", err);
-      toast({ title: "Lỗi", description: "Không tải được khung giờ" });
-    } finally {
-      setLoadingSlots(false);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        ...(field === "doctor" || field === "date" ? { time: "", slotId: "" } : {})
+      }));
     }
   };
 
-  fetchSlots();
-}, [formData.doctor, formData.date]);
-
-
-
-const handleChange = (field, value) => {
-  if (field === "time") {
-    const selectedSlot = timeSlots.find(s => s.label === value);
-    setFormData(prev => ({
-      ...prev,
-      time: value,
-      slotId: selectedSlot?.id || ""
-    }));
-  } else {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-      ...(field === "doctor" || field === "date" ? { time: "", slotId: "" } : {})
-    }));
-  }
-};
- 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.doctor || !formData.date || !formData.time) {
       toast({
         title: "Lỗi",
@@ -173,22 +173,22 @@ const handleChange = (field, value) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="doctor">Chọn bác sĩ *</Label>
-                     <Select onValueChange={(value) => handleChange("doctor", value)}>
-  <SelectTrigger>
-    <SelectValue placeholder="Chọn bác sĩ" />
-  </SelectTrigger>
-  <SelectContent>
-    {loadingDoctors ? (
-      <p className="text-sm text-muted-foreground px-4 py-2">Đang tải...</p>
-    ) : (
-      doctors.map((doctor) => (
-        <SelectItem key={doctor.id} value={doctor.id}>
-          {doctor.fullName} - {doctor.specialty}
-        </SelectItem>
-      ))
-    )}
-  </SelectContent>
-</Select>
+                      <Select onValueChange={(value) => handleChange("doctor", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn bác sĩ" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loadingDoctors ? (
+                            <p className="text-sm text-muted-foreground px-4 py-2">Đang tải...</p>
+                          ) : (
+                            doctors.map((doctor) => (
+                              <SelectItem key={doctor.id} value={doctor.id}>
+                                {doctor.fullName} - {doctor.specialty}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
 
                     </div>
 
@@ -205,25 +205,25 @@ const handleChange = (field, value) => {
                     </div>
                   </div>
 
-                 {formData.doctor && formData.date && (
-  <div className="space-y-2">
-    <Label>Giờ khám *</Label>
-    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-      {timeSlots.map((slot) => (
-  <Button
-    key={slot.id}
-    type="button"
-    variant={formData.time === slot.label ? "default" : "outline"}
-    size="sm"
-    onClick={() => handleChange("time", slot.label)}
-  >
-    {slot.label}
-  </Button>
-))}
+                  {formData.doctor && formData.date && (
+                    <div className="space-y-2">
+                      <Label>Giờ khám *</Label>
+                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                        {timeSlots.map((slot) => (
+                          <Button
+                            key={slot.id}
+                            type="button"
+                            variant={formData.time === slot.label ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleChange("time", slot.label)}
+                          >
+                            {slot.label}
+                          </Button>
+                        ))}
 
-    </div>
-  </div>
-)}
+                      </div>
+                    </div>
+                  )}
 
 
                   <div className="space-y-2">
