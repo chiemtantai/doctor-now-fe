@@ -49,3 +49,36 @@ export const getAvailableSlots = async (doctorId: string, date: string) => {
   return data.slots;
 };
 
+
+export const bookSlot = async (slotId: string, patientId: string) => {
+  const res = await fetch(`${GATEWAY_API}/api/GatewaySlots/book`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ slotId, patientId })
+  });
+
+  if (!res.ok) {
+    const text = await res.text(); // tránh lỗi parse JSON nếu lỗi trả về không đúng format
+    console.error("❌ Booking API error:", text);
+    throw new Error(`Lỗi đặt lịch: ${text}`);
+  }
+
+  try {
+    const data = await res.json();
+    console.log("📦 bookSlot response:", data);
+    return data;
+  } catch (err) {
+    throw new Error("Không thể phân tích phản hồi từ server");
+  }
+};
+
+export const getAppointmentHistory = async (patientId: string) => {
+  const res = await fetch(`${GATEWAY_API}/api/GatewaySlots/history?patientId=${patientId}`);
+  if (!res.ok) throw new Error("Không thể lấy lịch sử khám");
+  const data = await res.json();
+  return data.slots; // trả về danh sách BookedTimeSlotDetail
+};
+
+

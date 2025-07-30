@@ -231,9 +231,7 @@ const History = () => {
                         </Button>
                       )}
                       
-                      <Button variant="outline" size="sm">
-                        Đặt lại lịch
-                      </Button>
+                   
                     </div>
                   </div>
                 </CardContent>
