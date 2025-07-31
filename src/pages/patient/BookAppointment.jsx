@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { Calendar, Clock, User2 } from "lucide-react";
 import { getAllDoctors, getAvailableSlots } from "../../lib/api";
 import { useEffect } from "react";
-import { bookSlot } from "../../lib/api"; 
+import { bookSlot } from "../../lib/api";
 
 const BookAppointment = () => {
   const [formData, setFormData] = useState({
@@ -27,19 +27,19 @@ const BookAppointment = () => {
   const [timeSlots, setTimeSlots] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  
-const handleBook = async (slotId) => {
-  try {
-    const patientId = localStorage.getItem("userId");
-    if (!patientId) throw new Error("Bạn chưa đăng nhập");
 
-    const result = await bookSlot(slotId, patientId);
-    alert("Đặt lịch thành công!");
-    console.log("Đặt xong:", result);
-  } catch (err) {
-    alert(err.message);
-  }
-};
+  const handleBook = async (slotId) => {
+    try {
+      const patientId = localStorage.getItem("userId");
+      if (!patientId) throw new Error("Bạn chưa đăng nhập");
+
+      const result = await bookSlot(slotId, patientId);
+      alert("Đặt lịch thành công!");
+      console.log("Đặt xong:", result);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   useEffect(() => {
     const fetchDoctors = async () => {
@@ -117,29 +117,29 @@ const handleBook = async (slotId) => {
       return;
     }
 
-     try {
-    const patientId = localStorage.getItem("userId");
-    if (!patientId) {
-      throw new Error("Bạn chưa đăng nhập");
+    try {
+      const patientId = localStorage.getItem("userId");
+      if (!patientId) {
+        throw new Error("Bạn chưa đăng nhập");
+      }
+
+      await bookSlot(formData.slotId, patientId);
+
+      toast({
+        title: "Đặt lịch thành công",
+        description: "Bạn sẽ nhận được xác nhận sớm!",
+      });
+
+      navigate("/history");
+    } catch (err) {
+      console.error("❌ Booking error:", err);
+      toast({
+        title: "Đặt lịch thất bại",
+        description: err.message || "Có lỗi khi đặt lịch",
+        variant: "destructive",
+      });
     }
 
-    await bookSlot(formData.slotId, patientId);
-
-    toast({
-      title: "Đặt lịch thành công",
-      description: "Bạn sẽ nhận được xác nhận sớm!",
-    });
-
-    navigate("/history");
-  } catch (err) {
-    console.error("❌ Booking error:", err);
-    toast({
-      title: "Đặt lịch thất bại",
-      description: err.message || "Có lỗi khi đặt lịch",
-      variant: "destructive",
-    });
-  }
- 
   };
 
   const selectedDoctor = doctors.find(d => d.id === formData.doctor);
@@ -262,13 +262,13 @@ const handleBook = async (slotId) => {
                         Chuyên khoa: {selectedDoctor.specialty}
                       </p>
                     </div>
-                    
-                  
+
+
                     <div className="space-y-2">
                       <h4 className="font-medium">Kinh nghiệm:</h4>
-                     <p className="text-sm text-muted-foreground">
-      {selectedDoctor.bio}
-    </p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedDoctor.bio}
+                      </p>
                     </div>
                   </div>
                 ) : (

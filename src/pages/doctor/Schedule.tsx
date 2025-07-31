@@ -21,14 +21,14 @@ const Schedule = () => {
         const slots = await getBookedSlotsByDoctor(doctorId, today);
 
         const formattedSlots = slots.map((slot, index) => ({
-          id: slot.id || index + 1,
+          id: slot.slotId || index + 1,
           time: new Date(slot.startTime).toLocaleTimeString("vi-VN", {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          patient: slot.patientName || "Bệnh nhân chưa xác định",
+          patient: slot.patientName || "Bệnh nhân chưa xác định", 
           type: "Khám bệnh",
-          status: slot.status.toLowerCase(),
+          status: slot.isBooked ? "booked" : "available",
         }));
 
         setTodaySchedule(formattedSlots);
