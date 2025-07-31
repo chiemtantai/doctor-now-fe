@@ -1,28 +1,61 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, Clock, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
+import { getBookedSlotsByDoctor } from "../../lib/DoctorApi";
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
+  const [todaySchedule, setTodaySchedule] = useState([]);
+
+  useEffect(() => {
+    const fetchTodaySlots = async () => {
+      try {
+        const doctorId = localStorage.getItem("userId");
+        const today = new Date().toISOString().split("T")[0];
+        if (!doctorId) return;
+
+        const slots = await getBookedSlotsByDoctor(doctorId, today);
+
+        const formatted = slots.map((slot, index) => {
+          const start = new Date(slot.startTime.seconds * 1000);
+          return {
+            id: slot.slotId || index,
+            patientName: slot.patientName,
+            time: start.toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          };
+        });
+
+        setTodaySchedule(formatted);
+      } catch (err) {
+        console.error("Failed to fetch today's schedule:", err);
+      }
+    };
+
+    fetchTodaySlots();
+  }, []);
 
   const stats = [
     {
       title: "Lịch hôm nay",
-      value: "8",
+      value: todaySchedule.length.toString(),
       icon: Calendar,
       color: "text-primary",
     },
     {
       title: "Bệnh nhân đã khám",
-      value: "5",
+      value: "0",
       icon: Users,
       color: "text-success",
     },
     {
       title: "Bệnh nhân chờ khám",
-      value: "3",
+      value: "0",
       icon: Clock,
       color: "text-warning",
     },
@@ -60,26 +93,18 @@ const DoctorDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-medium">Nguyễn Thị B</p>
-                    <p className="text-sm text-muted-foreground">Khám tổng quát</p>
+                {todaySchedule.map((slot) => (
+                  <div key={slot.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <div>
+                      <p className="font-medium">{slot.patientName}</p>
+                      <p className="text-sm text-muted-foreground">Khám tổng quát</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{slot.time}</p>
+                      <p className="text-sm text-success">Đã đặt</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">08:00</p>
-                    <p className="text-sm text-success">Đã khám</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-medium">Trần Văn C</p>
-                    <p className="text-sm text-muted-foreground">Tái khám</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">09:00</p>
-                    <p className="text-sm text-warning">Chờ khám</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -92,7 +117,7 @@ const DoctorDashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span>Tổng bệnh nhân trong tháng:</span>
-                  <span className="font-medium">156</span>
+                  <span className="font-medium">0</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Lịch còn trống hôm nay:</span>
@@ -100,7 +125,7 @@ const DoctorDashboard = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Lịch tuần tới:</span>
-                  <span className="font-medium">15 lịch hẹn</span>
+                  <span className="font-medium">0 lịch hẹn</span>
                 </div>
               </div>
             </CardContent>

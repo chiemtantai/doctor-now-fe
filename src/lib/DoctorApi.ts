@@ -122,7 +122,7 @@ export const loginDoctor = async (request: DoctorLoginRequest): Promise<any> => 
 
 // GET /gatewayslots/booked
 export const getBookedSlotsByDoctor = async (doctorId: string, date: string): Promise<any[]> => {
-  const res = await fetch(`${API_APPOINTMENT_BASE_URL}/GatewaySlots/booked-by-patient?doctorId=${doctorId}&date=${date}`);
+  const res = await fetch(`${API_APPOINTMENT_BASE_URL}/GatewaySlots/booked-by-doctor?doctorId=${doctorId}&date=${date}`);
   if (!res.ok) throw new Error("Failed to fetch booked slots");
   const data = await res.json();
   return data.slots;

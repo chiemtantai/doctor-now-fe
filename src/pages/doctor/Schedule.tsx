@@ -18,16 +18,24 @@ const Schedule = () => {
 
       const slots = await getBookedSlotsByDoctor(doctorId, today);
 
-      const formattedSlots = slots.map((slot, index) => ({
-        id: slot.slotId || index + 1,
-        time: new Date(slot.startTime).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        patient: slot.patientName || "Bệnh nhân chưa xác định",
-        type: "Khám bệnh",
-        status: slot.isBooked ? "booked" : "available",
-      }));
+      const formattedSlots = slots.map((slot, index) => {
+        const start = new Date(slot.startTime.seconds * 1000);
+        const end = new Date(slot.endTime.seconds * 1000);
+
+        return {
+          id: slot.slotId || index + 1,
+          time: `${start.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })} - ${end.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
+          patient: slot.patientName || "Bệnh nhân chưa xác định",
+          type: "Khám bệnh",
+          status: slot.isBooked ? "booked" : "available",
+        };
+      });
 
       setTodaySchedule(formattedSlots);
     } catch (error) {
@@ -55,7 +63,7 @@ const Schedule = () => {
       const t = toast({
         title: "📥 Có lịch khám mới!",
         description: message,
-        duration: Infinity, // Không tự tắt
+        duration: Infinity,
         action: (
           <Button
             variant="ghost"
