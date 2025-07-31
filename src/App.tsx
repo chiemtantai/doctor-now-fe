@@ -127,7 +127,7 @@ const AppRoutes = () => {
           path="/dashboard"
           element={
             <ProtectedRoute allowedRoles={[2]}>
-              <Dashboard />
+              <Dashboard user={user} />
             </ProtectedRoute>
           }
         />
