@@ -47,10 +47,10 @@ const Login = () => {
     try {
       let result;
       if (role === "patient") {
-        console.log("🟡 Đăng nhập với vai trò BỆNH NHÂN...");
+        console.log(" Đăng nhập với vai trò BỆNH NHÂN...");
         result = await loginUser(email, password);
       } else {
-        console.log("🟡 Đăng nhập với vai trò BÁC SĨ...");
+        console.log(" Đăng nhập với vai trò BÁC SĨ...");
         result = await loginDoctor(email, password);
       }
 
@@ -64,7 +64,7 @@ const Login = () => {
       });
       // Điều hướng nếu cần
     } catch (error) {
-      console.error("🔥 Đăng nhập thất bại:", error);
+      console.error(" Đăng nhập thất bại:", error);
       toast({
         title: "Đăng nhập thất bại",
         description: "Email hoặc mật khẩu không đúng",

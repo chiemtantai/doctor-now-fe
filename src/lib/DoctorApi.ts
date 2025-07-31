@@ -127,3 +127,21 @@ export const getBookedSlotsByDoctor = async (doctorId: string, date: string): Pr
   const data = await res.json();
   return data.slots;
 };
+
+// POST /gatewayslots/create-schedule
+export const createDoctorSchedule = async (doctorId: string, date: string): Promise<string> => {
+  const res = await fetch(`${API_APPOINTMENT_BASE_URL}/GatewaySlots/create-schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ doctorId, date }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Failed to create schedule");
+  }
+
+  const data = await res.json();
+  return data.scheduleId;
+};
+

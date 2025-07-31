@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Clock, User2 } from "lucide-react";
-import { getAllDoctors, getAvailableSlots } from "../../lib/api"; // Giả sử bạn có một hàm lấy danh sách bác sĩ
+import { getAllDoctors, getAvailableSlots } from "../../lib/api";
 import { useEffect } from "react";
 import { bookSlot } from "../../lib/api";
 
@@ -16,7 +16,6 @@ const BookAppointment = () => {
   const [formData, setFormData] = useState({
     doctor: "",
     specialty: "",
-
     date: "",
     time: "",
     reason: ""
@@ -45,8 +44,6 @@ const BookAppointment = () => {
     const fetchDoctors = async () => {
       try {
         const data = await getAllDoctors();
-        setDoctors(data);
-        console.log("✅ getAllDoctors response:", data);
         setDoctors(data.items);
       } catch (err) {
         toast({
@@ -61,22 +58,25 @@ const BookAppointment = () => {
 
     fetchDoctors();
   }, []);
+
   useEffect(() => {
     const fetchSlots = async () => {
       if (!formData.doctor || !formData.date) return;
 
-      console.log("📅 Fetching slots for:", formData);
-
       setLoadingSlots(true);
       try {
         const raw = await getAvailableSlots(formData.doctor, formData.date);
-        const mapped = raw.map((s) => ({
-          id: s.slotId,
-          label: s.startTime.split(" ")[1],
-          ...s
-        }));
+        const mapped = raw.map((s) => {
+          const start = new Date(s.startTime.seconds * 1000);
+          const end = new Date(s.endTime.seconds * 1000);
+          return {
+            id: s.slotId,
+            label: `${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`,
+            ...s
+          };
+        });
 
-        mapped.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+        mapped.sort((a, b) => new Date(a.startTime.seconds * 1000) - new Date(b.startTime.seconds * 1000));
         setTimeSlots(mapped);
       } catch (err) {
         console.error("❌ Lỗi tải khung giờ:", err);
@@ -88,8 +88,6 @@ const BookAppointment = () => {
 
     fetchSlots();
   }, [formData.doctor, formData.date]);
-
-
 
   const handleChange = (field, value) => {
     if (field === "time") {
@@ -107,7 +105,6 @@ const BookAppointment = () => {
       }));
     }
   };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -131,14 +128,12 @@ const BookAppointment = () => {
 
       toast({
         title: "Đặt lịch thành công",
-        description: "Bạn sẽ nhận được xác nhận sớm!",
+        description: "Bạn đã đặt lịch thành công. vui lòng xem quy định!",
       });
 
       navigate("/history");
     } catch (err) {
       const message = err?.message || "";
-
-      // ✅ Nếu lỗi là do đã đặt slot trong ngày với bác sĩ đó
       if (message.includes("Mỗi bệnh nhân chỉ được đặt 1 slot/bác sĩ/ngày")) {
         toast({
           title: "Đặt lịch không thành công",
@@ -154,7 +149,6 @@ const BookAppointment = () => {
         });
       }
     }
-
   };
 
   const selectedDoctor = doctors.find(d => d.id === formData.doctor);
@@ -204,7 +198,6 @@ const BookAppointment = () => {
                           )}
                         </SelectContent>
                       </Select>
-
                     </div>
 
                     <div className="space-y-2">
@@ -235,11 +228,9 @@ const BookAppointment = () => {
                             {slot.label}
                           </Button>
                         ))}
-
                       </div>
                     </div>
                   )}
-
 
                   <div className="space-y-2">
                     <Label htmlFor="reason">Lý do khám</Label>
@@ -277,7 +268,6 @@ const BookAppointment = () => {
                         Chuyên khoa: {selectedDoctor.specialty}
                       </p>
                     </div>
-
 
                     <div className="space-y-2">
                       <h4 className="font-medium">Kinh nghiệm:</h4>
