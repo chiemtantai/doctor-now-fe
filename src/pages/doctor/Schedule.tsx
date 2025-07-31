@@ -5,44 +5,77 @@ import { Calendar, Plus, Users, Clock } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { getBookedSlotsByDoctor } from "../../lib/DoctorApi";
+import * as signalR from "@microsoft/signalr";
 
 const Schedule = () => {
   const [todaySchedule, setTodaySchedule] = useState([]);
   const { toast } = useToast();
+  const fetchSchedule = async () => {
+    try {
+      const doctorId = localStorage.getItem("userId");
+      const today = new Date().toISOString().split("T")[0];
+      if (!doctorId) return;
+
+      const slots = await getBookedSlotsByDoctor(doctorId, today);
+
+      const formattedSlots = slots.map((slot, index) => ({
+        id: slot.slotId || index + 1,
+        time: new Date(slot.startTime).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        patient: slot.patientName || "Bệnh nhân chưa xác định",
+        type: "Khám bệnh",
+        status: slot.isBooked ? "booked" : "available",
+      }));
+
+      setTodaySchedule(formattedSlots);
+    } catch (error) {
+      console.error("Error fetching booked slots:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể lấy lịch đã đặt",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const doctorId = localStorage.getItem("userId");
-        const today = new Date().toISOString().split("T")[0];
-        console.log(doctorId)
-        if (!doctorId) return;
-
-        const slots = await getBookedSlotsByDoctor(doctorId, today);
-
-        const formattedSlots = slots.map((slot, index) => ({
-          id: slot.slotId || index + 1,
-          time: new Date(slot.startTime).toLocaleTimeString("vi-VN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          patient: slot.patientName || "Bệnh nhân chưa xác định", 
-          type: "Khám bệnh",
-          status: slot.isBooked ? "booked" : "available",
-        }));
-
-        setTodaySchedule(formattedSlots);
-      } catch (error) {
-        console.error("Error fetching booked slots:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể lấy lịch đã đặt",
-          variant: "destructive",
-        });
-      }
-    };
+    const doctorId = localStorage.getItem("userId");
+    if (!doctorId) return;
 
     fetchSchedule();
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(`https://localhost:7075/notificationhub?userId=${doctorId}&role=Doctor`)
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("ReceiveNotification", (message: string) => {
+      const t = toast({
+        title: "📥 Có lịch khám mới!",
+        description: message,
+        duration: Infinity, // Không tự tắt
+        action: (
+          <Button
+            variant="ghost"
+            onClick={() => t.dismiss()}
+          >
+            Đã hiểu
+          </Button>
+        ),
+      });
+
+      fetchSchedule();
+    });
+
+    connection.start()
+      .then(() => console.log("🟢 Kết nối SignalR thành công"))
+      .catch(err => console.error("❌ Lỗi kết nối SignalR:", err));
+
+    return () => {
+      connection.stop();
+    };
   }, []);
 
   const createTodaySchedule = () => {

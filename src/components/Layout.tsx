@@ -13,13 +13,21 @@ const Layout = ({ children }: LayoutProps) => {
   const { toast } = useToast();
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
+    // Xoá toàn bộ thông tin liên quan đến phiên đăng nhập
+    localStorage.removeItem("token");
+    localStorage.removeItem("roleId");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("name");
+    localStorage.removeItem("email");
     localStorage.removeItem("doctorName");
+    localStorage.removeItem("isLoggedIn");
+
     toast({
       title: "Đăng xuất thành công",
       description: "Hẹn gặp lại bạn!",
     });
-    navigate("/");
+
+    navigate("/login"); // ✅ Chuyển về trang login
   };
 
   const doctorName = localStorage.getItem("doctorName") || "Bác sĩ";
@@ -72,9 +80,7 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        {children}
-      </main>
+      <main className="container mx-auto px-4 py-6">{children}</main>
     </div>
   );
 };

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Clock, User2 } from "lucide-react";
-import { getAllDoctors, getAvailableSlots } from "../../lib/api";
+import { getAllDoctors, getAvailableSlots } from "../../lib/api"; // Giả sử bạn có một hàm lấy danh sách bác sĩ
 import { useEffect } from "react";
 import { bookSlot } from "../../lib/api";
 
@@ -46,6 +46,8 @@ const BookAppointment = () => {
       try {
         const data = await getAllDoctors();
         setDoctors(data);
+        console.log("✅ getAllDoctors response:", data);
+        setDoctors(data.items);
       } catch (err) {
         toast({
           title: "Lỗi tải danh sách bác sĩ",
@@ -68,11 +70,13 @@ const BookAppointment = () => {
       setLoadingSlots(true);
       try {
         const raw = await getAvailableSlots(formData.doctor, formData.date);
-        const mapped = raw.map(s => ({
+        const mapped = raw.map((s) => ({
           id: s.slotId,
           label: s.startTime.split(" ")[1],
           ...s
         }));
+
+        mapped.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
         setTimeSlots(mapped);
       } catch (err) {
         console.error("❌ Lỗi tải khung giờ:", err);
@@ -132,12 +136,23 @@ const BookAppointment = () => {
 
       navigate("/history");
     } catch (err) {
-      console.error("❌ Booking error:", err);
-      toast({
-        title: "Đặt lịch thất bại",
-        description: err.message || "Có lỗi khi đặt lịch",
-        variant: "destructive",
-      });
+      const message = err?.message || "";
+
+      // ✅ Nếu lỗi là do đã đặt slot trong ngày với bác sĩ đó
+      if (message.includes("Mỗi bệnh nhân chỉ được đặt 1 slot/bác sĩ/ngày")) {
+        toast({
+          title: "Đặt lịch không thành công",
+          description: "Bạn chỉ được đặt 1 lịch với bác sĩ này trong một ngày.",
+          variant: "destructive",
+        });
+      } else {
+        console.error("❌ Booking error:", err);
+        toast({
+          title: "Đặt lịch thất bại",
+          description: message || "Có lỗi khi đặt lịch",
+          variant: "destructive",
+        });
+      }
     }
 
   };
